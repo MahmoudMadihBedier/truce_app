@@ -12,7 +12,20 @@
           "package_name": "com.example.truce_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "795651182040-rc4paac7q74h3uoc70kumlj0e012rv8n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.truce_app",
+            "certificate_hash": "338d33abf90609311329e8146623a576b5f7c20b"
+          }
+        },
+        {
+          "client_id": "795651182040-uljqlrchf5ol0ot8efe7vfgsclb046j7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDPZreKQ3KOxS_vgYnSp6sm0BN6JWZA_KM"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "795651182040-uljqlrchf5ol0ot8efe7vfgsclb046j7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "795651182040-dt1ee8ifsmsr9017p85aicdtr14mqp2s.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.truceApp"
+              }
+            }
+          ]
         }
       }
     }
