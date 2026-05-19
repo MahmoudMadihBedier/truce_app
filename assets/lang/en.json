@@ -1,0 +1,23 @@
+{
+  "app_title": "Truce",
+  "welcome_back": "Welcome Back",
+  "track_prices": "Track prices and save money today",
+  "email": "Email",
+  "password": "Password",
+  "login": "Login",
+  "continue_with_google": "Continue with Google",
+  "continue_as_guest": "Continue as Guest",
+  "dont_have_account": "Don't have an account?",
+  "sign_up": "Sign Up",
+  "search_hint": "Search products, brands...",
+  "gold": "Gold",
+  "usd": "USD",
+  "poultry": "Poultry",
+  "home": "Home",
+  "explore": "Explore",
+  "coupons": "Coupons",
+  "account": "Account",
+  "login_required": "Login Required",
+  "guest_limit_reached": "You have reached the limit for guest use. Please log in or create an account to continue tracking prices.",
+  "cancel": "Cancel"
+}
