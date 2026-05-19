@@ -3,9 +3,19 @@ import '../entities/auth_user.dart';
 
 abstract class AuthRepository {
   Stream<AuthUser> get user;
-  Future<Result<AuthUser>> signUp({required String email, required String password});
-  Future<Result<AuthUser>> logInWithEmail({required String email, required String password});
+  AuthUser get currentUser;
+  Future<Result<AuthUser>> signUp({
+    required String email,
+    required String password,
+    String? displayName,
+  });
+  Future<Result<AuthUser>> logInWithEmail({
+    required String email,
+    required String password,
+  });
   Future<Result<AuthUser>> logInWithGoogle();
+  Future<Result<AuthUser>> logInAnonymously();
+  Future<Result<void>> logOut();
   Future<Result<void>> verifyPhoneNumber({
     required String phoneNumber,
     required void Function(String verificationId) onCodeSent,
@@ -15,7 +25,5 @@ abstract class AuthRepository {
     required String verificationId,
     required String smsCode,
   });
-  Future<Result<AuthUser>> logInAnonymously();
-  Future<Result<void>> logOut();
-  AuthUser get currentUser;
+  Future<Result<void>> resetPassword({required String email});
 }

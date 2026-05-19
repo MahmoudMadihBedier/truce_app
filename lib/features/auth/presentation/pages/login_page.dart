@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../cubit/auth_cubit.dart';
-import '../../../home/presentation/pages/nav_page.dart';
-import '../../../../core/localization/app_localizations.dart';
+import 'package:truce_app/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:truce_app/features/auth/presentation/pages/signup_page.dart';
+import 'package:truce_app/features/auth/presentation/pages/forgot_password_page.dart';
+import 'package:truce_app/features/auth/presentation/pages/phone_login_page.dart';
+import 'package:truce_app/features/main/presentation/pages/nav_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -18,14 +19,9 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
 
   @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).primaryColor;
+
     return Scaffold(
       body: BlocListener<AuthCubit, AuthState>(
         listener: (context, state) {
@@ -34,119 +30,157 @@ class _LoginPageState extends State<LoginPage> {
               MaterialPageRoute(builder: (_) => const NavPage()),
             );
           }
+          if (state.errorMessage != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.errorMessage!)),
+            );
+          }
         },
         child: SingleChildScrollView(
-          child: Container(
-            height: MediaQuery.of(context).size.height,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 60),
-                Image.asset(
-                  'assets/images/logo.png',
-                  height: 100,
-                ).animate().fade().scale(),
-                const SizedBox(height: 40),
-                Text(
-                  AppLocalizations.of(context)!.translate('welcome_back'),
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1B5E35),
-                  ),
-                  textAlign: TextAlign.center,
-                ).animate().fade(delay: 200.ms).slideY(begin: 0.2, end: 0),
-                const SizedBox(height: 8),
-                Text(
-                  AppLocalizations.of(context)!.translate('track_prices'),
-                  style: const TextStyle(color: Colors.grey),
-                  textAlign: TextAlign.center,
-                ).animate().fade(delay: 400.ms),
-                const SizedBox(height: 40),
-                Form(
+          child: Column(
+            children: [
+              // Top Section (Green)
+              Container(
+                height: 320,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: primaryColor,
+                  borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(80)),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset('assets/images/logo.png', width: 100, height: 100),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Welcome to Truce',
+                      style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Track prices. Save money.',
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+              // Login Form
+              Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Form(
                   key: _formKey,
                   child: Column(
                     children: [
                       TextFormField(
                         controller: _emailController,
                         decoration: InputDecoration(
-                          hintText: AppLocalizations.of(context)!.translate('email'),
+                          labelText: 'Email',
                           prefixIcon: const Icon(Icons.email_outlined),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) return 'Please enter your email';
-                          if (!value.contains('@')) return 'Please enter a valid email';
-                          return null;
-                        },
-                      ).animate().fade(delay: 600.ms).slideX(begin: -0.1, end: 0),
-                      const SizedBox(height: 16),
+                        validator: (v) => v!.contains('@') ? null : 'Invalid email',
+                      ),
+                      const SizedBox(height: 20),
                       TextFormField(
                         controller: _passwordController,
                         obscureText: true,
                         decoration: InputDecoration(
-                          hintText: AppLocalizations.of(context)!.translate('password'),
+                          labelText: 'Password',
                           prefixIcon: const Icon(Icons.lock_outline),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) return 'Please enter your password';
-                          if (value.length < 6) return 'Password must be at least 6 characters';
-                          return null;
-                        },
-                      ).animate().fade(delay: 700.ms).slideX(begin: -0.1, end: 0),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      // Login logic
-                    }
-                  },
-                  child: Text(AppLocalizations.of(context)!.translate('login')),
-                ).animate().fade(delay: 800.ms).scale(),
-                const SizedBox(height: 16),
-                OutlinedButton(
-                  onPressed: () => context.read<AuthCubit>().logInWithGoogle(),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.g_mobiledata, size: 30),
-                      const SizedBox(width: 8),
-                      Text(AppLocalizations.of(context)!.translate('continue_with_google')),
-                    ],
-                  ),
-                ).animate().fade(delay: 900.ms).scale(),
-                const SizedBox(height: 24),
-                TextButton(
-                  onPressed: () => context.read<AuthCubit>().logInAnonymously(),
-                  child: Text(AppLocalizations.of(context)!.translate('continue_as_guest')),
-                ).animate().fade(delay: 1000.ms),
-                const Spacer(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(AppLocalizations.of(context)!.translate('dont_have_account')),
-                    TextButton(
-                      onPressed: () {},
-                      child: Text(
-                        AppLocalizations.of(context)!.translate('sign_up'),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        validator: (v) => v!.length < 6 ? 'Too short' : null,
                       ),
-                    ),
-                  ],
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordPage()));
+                          },
+                          child: const Text('Forgot Password?'),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      BlocBuilder<AuthCubit, AuthState>(
+                        builder: (context, state) {
+                          if (state.status == AuthStatus.loading) {
+                            return const CircularProgressIndicator();
+                          }
+                          return ElevatedButton(
+                            onPressed: () {
+                              if (_formKey.currentState!.validate()) {
+                                context.read<AuthCubit>().logInWithEmail(
+                                      _emailController.text,
+                                      _passwordController.text,
+                                    );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryColor,
+                              minimumSize: const Size(double.infinity, 54),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text('Login', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text("Don't have an account?"),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const SignUpPage()));
+                            },
+                            child: const Text('Sign Up', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 40),
+                      // Social Logins
+                      _buildSocialButton(
+                        label: 'Continue with Google',
+                        icon: Icons.g_mobiledata,
+                        onPressed: () => context.read<AuthCubit>().logInWithGoogle(),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildSocialButton(
+                        label: 'Continue with Phone',
+                        icon: Icons.phone_android,
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const PhoneLoginPage()));
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton(
+                        onPressed: () => context.read<AuthCubit>().logInAnonymously(),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Continue as Guest'),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 20),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSocialButton({required String label, required IconData icon, required VoidCallback onPressed}) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 28),
+      label: Text(label, style: const TextStyle(fontSize: 16)),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 54),
+        side: BorderSide(color: Colors.grey.shade300),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

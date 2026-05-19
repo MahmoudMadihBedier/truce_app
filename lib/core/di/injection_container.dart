@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../network/api_client.dart';
 import '../services/guest_service.dart';
+import '../theme/settings_cubit.dart';
 import '../../features/products/data/datasources/product_remote_datasource.dart';
 import '../../features/products/data/datasources/product_remote_datasource_impl.dart';
 import '../../features/products/data/repositories/product_repository_impl.dart';
@@ -15,6 +16,10 @@ import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/products/presentation/cubit/product_cubit.dart';
+import '../../features/market/domain/repositories/market_repository.dart';
+import '../../features/market/data/repositories/market_repository_impl.dart';
+import '../../features/market/domain/usecases/get_market_rates.dart';
+import '../../features/market/presentation/cubit/market_cubit.dart';
 
 final sl = GetIt.instance;
 
@@ -34,6 +39,7 @@ Future<void> init() async {
   // Core
   sl.registerLazySingleton(() => ApiClient(sl()));
   sl.registerLazySingleton(() => GuestService(sl()));
+  sl.registerFactory(() => SettingsCubit(sl()));
 
   // Features - Auth
   sl.registerLazySingleton<AuthRepository>(
@@ -65,4 +71,9 @@ Future<void> init() async {
       getProducts: sl(),
     ),
   );
+
+  // Features - Market
+  sl.registerLazySingleton<MarketRepository>(() => MarketRepositoryImpl());
+  sl.registerLazySingleton(() => GetMarketRates(sl()));
+  sl.registerFactory(() => MarketCubit(getMarketRates: sl()));
 }
