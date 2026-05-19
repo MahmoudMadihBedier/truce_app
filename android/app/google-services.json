@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "795651182040",
+    "project_id": "truce-9da01",
+    "storage_bucket": "truce-9da01.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:795651182040:android:a222a7b2941e93c7f536ad",
+        "android_client_info": {
+          "package_name": "com.example.truce_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPZreKQ3KOxS_vgYnSp6sm0BN6JWZA_KM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
