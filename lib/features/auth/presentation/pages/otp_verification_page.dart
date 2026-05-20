@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:truce_app/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:truce_app/features/main/presentation/pages/nav_page.dart';
-import '../cubit/auth_cubit.dart';
 
 class OtpVerificationPage extends StatefulWidget {
   final String verificationId;
