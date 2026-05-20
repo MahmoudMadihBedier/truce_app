@@ -1,9 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import '../../../../core/error/failures.dart';
-import '../../../../core/error/result.dart';
-import '../../domain/entities/auth_user.dart';
-import '../../domain/repositories/auth_repository.dart';
+import 'package:truce_app/core/error/failures.dart';
+import 'package:truce_app/core/error/result.dart';
+import 'package:truce_app/features/auth/domain/entities/auth_user.dart';
+import 'package:truce_app/features/auth/domain/repositories/auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final FirebaseAuth _firebaseAuth;
@@ -33,12 +33,16 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Result<AuthUser>> signUp({
     required String email,
     required String password,
+    String? displayName,
   }) async {
     try {
       final credential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+      if (displayName != null) {
+        await credential.user!.updateDisplayName(displayName);
+      }
       return Result.success(credential.user!.toUser);
     } on FirebaseAuthException catch (e) {
       return Result.error(AuthFailure(e.message ?? 'Sign up failed'));
@@ -59,6 +63,9 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       return Result.success(credential.user!.toUser);
     } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found' || e.code == 'wrong-password') {
+        return Result.error(const AuthFailure('Invalid email or password'));
+      }
       return Result.error(AuthFailure(e.message ?? 'Login failed'));
     } catch (e) {
       return Result.error(AuthFailure(e.toString()));
@@ -105,6 +112,18 @@ class AuthRepositoryImpl implements AuthRepository {
       return Result.success(userCredential.user!.toUser);
     } on FirebaseAuthException catch (e) {
       return Result.error(AuthFailure(e.message ?? 'Phone Login failed'));
+    } catch (e) {
+      return Result.error(AuthFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Result<void>> resetPassword({required String email}) async {
+    try {
+      await _firebaseAuth.sendPasswordResetEmail(email: email);
+      return Result.success(null);
+    } on FirebaseAuthException catch (e) {
+      return Result.error(AuthFailure(e.message ?? 'Password reset failed'));
     } catch (e) {
       return Result.error(AuthFailure(e.toString()));
     }
