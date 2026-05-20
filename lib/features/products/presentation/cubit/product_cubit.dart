@@ -18,7 +18,12 @@ class ProductCubit extends Cubit<ProductState> {
         _getProducts = getProducts,
         super(ProductInitial());
 
-  Future<void> fetchAllProducts() async {
+  Future<void> fetchAllProducts({bool forceRefresh = false}) async {
+    // Skip fetch if already loaded and not forced
+    if (!forceRefresh && state is ProductLoaded) {
+      return;
+    }
+
     emit(ProductLoading());
     final result = await _getAllProducts();
     if (result.isSuccess) {
