@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../cubit/auth_cubit.dart';
-import 'otp_verification_page.dart';
+import 'package:truce_app/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:truce_app/features/auth/presentation/pages/otp_verification_page.dart';
 
 class PhoneLoginPage extends StatefulWidget {
   const PhoneLoginPage({super.key});
@@ -13,6 +13,7 @@ class PhoneLoginPage extends StatefulWidget {
 class _PhoneLoginPageState extends State<PhoneLoginPage> {
   final _phoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  String _countryCode = '+20';
 
   @override
   Widget build(BuildContext context) {
@@ -37,16 +38,45 @@ class _PhoneLoginPageState extends State<PhoneLoginPage> {
                 style: TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 32),
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: 'Phone Number',
-                  hintText: '+201XXXXXXXXX',
-                  prefixIcon: const Icon(Icons.phone),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                validator: (v) => v!.isEmpty ? 'Enter phone number' : null,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: DropdownButton<String>(
+                      value: _countryCode,
+                      underline: const SizedBox(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _countryCode = newValue!;
+                        });
+                      },
+                      items: <String>['+20', '+966', '+971']
+                          .map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Phone Number',
+                        hintText: '1XXXXXXXXX',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      validator: (v) => v!.isEmpty ? 'Enter phone number' : null,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
               BlocBuilder<AuthCubit, AuthState>(
@@ -57,15 +87,16 @@ class _PhoneLoginPageState extends State<PhoneLoginPage> {
                   return ElevatedButton(
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
+                        final fullPhone = '$_countryCode${_phoneController.text}';
                         context.read<AuthCubit>().verifyPhoneNumber(
-                              phoneNumber: _phoneController.text,
+                              phoneNumber: fullPhone,
                               onCodeSent: (verificationId) {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => OtpVerificationPage(
                                       verificationId: verificationId,
-                                      phoneNumber: _phoneController.text,
+                                      phoneNumber: fullPhone,
                                     ),
                                   ),
                                 );
