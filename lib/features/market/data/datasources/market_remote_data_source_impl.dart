@@ -9,6 +9,8 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
 
   MarketRemoteDataSourceImpl(this._apiClient);
 
+  static final RegExp _apiKeyPattern = RegExp(r'^[a-fA-F0-9]{32}$');
+
   @override
   Future<double> getUsdToEgp() async {
     final snapshot = await getLatest(base: 'USD', currency: 'EGP');
@@ -26,8 +28,9 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
 
   @override
   Future<MarketLatestSnapshot> getLatest({required String base, required String currency}) async {
-    if (MetalPriceApiConfig.apiKey.isEmpty) {
-      throw const ValidationFailure('Missing METALPRICE_API_KEY');
+    _validateApiKey();
+    if (base.trim().isEmpty || currency.trim().isEmpty) {
+      throw const ValidationFailure('Invalid base/currency');
     }
 
     final Response response = await _apiClient.get(
@@ -81,8 +84,9 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
     required String currency,
     required DateTime date,
   }) async {
-    if (MetalPriceApiConfig.apiKey.isEmpty) {
-      throw const ValidationFailure('Missing METALPRICE_API_KEY');
+    _validateApiKey();
+    if (base.trim().isEmpty || currency.trim().isEmpty) {
+      throw const ValidationFailure('Invalid base/currency');
     }
 
     final yyyy = date.toUtc().year.toString().padLeft(4, '0');
@@ -139,8 +143,9 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
 
   @override
   Future<MarketChangeSnapshot> getChangeWeek({required String base, required String currency}) async {
-    if (MetalPriceApiConfig.apiKey.isEmpty) {
-      throw const ValidationFailure('Missing METALPRICE_API_KEY');
+    _validateApiKey();
+    if (base.trim().isEmpty || currency.trim().isEmpty) {
+      throw const ValidationFailure('Invalid base/currency');
     }
 
     final Response response = await _apiClient.get(
@@ -191,5 +196,19 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
       startDate: DateTime.parse(startDateRaw),
       endDate: DateTime.parse(endDateRaw),
     );
+  }
+
+  void _validateApiKey() {
+    final key = MetalPriceApiConfig.apiKey.trim();
+    if (key.isEmpty) {
+      throw const ValidationFailure(
+        'Missing METALPRICE_API_KEY. Provide it via --dart-define=METALPRICE_API_KEY=...',
+      );
+    }
+    if (!_apiKeyPattern.hasMatch(key)) {
+      throw const ValidationFailure(
+        'Invalid METALPRICE_API_KEY format. Expected a 32-char hex string.',
+      );
+    }
   }
 }
