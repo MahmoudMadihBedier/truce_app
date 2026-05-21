@@ -4,7 +4,7 @@ import 'package:flutter_floating_bottom_bar/flutter_floating_bottom_bar.dart';
 import 'package:truce_app/core/di/injection_container.dart' as di;
 import 'package:truce_app/core/theme/app_colors.dart';
 import 'package:truce_app/features/home/presentation/pages/home_page.dart';
-import 'package:truce_app/features/products/presentation/pages/explore_page.dart';
+import 'package:truce_app/features/products/presentation/pages/search_page.dart';
 import 'package:truce_app/features/account/presentation/pages/account_page.dart';
 import 'package:truce_app/features/coupons/presentation/pages/coupons_page.dart';
 import 'package:truce_app/features/market/presentation/cubit/market_cubit.dart';
@@ -83,7 +83,7 @@ class _NavPageState extends State<NavPage> with SingleTickerProviderStateMixin {
             children: [
               HomePage(onSwitchTab: switchTab),
               const CouponsPage(),
-              const ExplorePage(),
+              const SearchPage(),
               const AccountPage(),
             ],
           ),

@@ -7,6 +7,7 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/settings_cubit.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'features/products/presentation/cubit/product_cubit.dart';
+import 'features/products/presentation/cubit/search_cubit.dart';
 import 'features/home/presentation/pages/splash_page.dart';
 import 'firebase_options.dart';
 import 'core/localization/app_localizations.dart';
@@ -29,6 +30,7 @@ class TruceApp extends StatelessWidget {
       providers: [
         BlocProvider(create: (_) => di.sl<AuthCubit>()),
         BlocProvider(create: (_) => di.sl<ProductCubit>()),
+        BlocProvider(create: (_) => di.sl<SearchCubit>()),
         BlocProvider(create: (_) => di.sl<SettingsCubit>()),
       ],
       child: BlocBuilder<SettingsCubit, SettingsState>(

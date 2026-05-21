@@ -12,13 +12,18 @@ import '../../features/products/data/repositories/product_repository_impl.dart';
 import '../../features/products/domain/repositories/product_repository.dart';
 import '../../features/products/domain/usecases/get_all_products.dart';
 import '../../features/products/domain/usecases/get_products.dart';
+import '../../features/products/domain/usecases/search_products.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/products/presentation/cubit/product_cubit.dart';
+import '../../features/products/presentation/cubit/search_cubit.dart';
 import '../../features/market/domain/repositories/market_repository.dart';
 import '../../features/market/data/repositories/market_repository_impl.dart';
+import '../../features/market/data/datasources/market_remote_data_source.dart';
+import '../../features/market/data/datasources/market_remote_data_source_impl.dart';
 import '../../features/market/domain/usecases/get_market_rates.dart';
+import '../../features/market/domain/usecases/get_market_details.dart';
 import '../../features/market/presentation/cubit/market_cubit.dart';
 
 final sl = GetIt.instance;
@@ -54,6 +59,7 @@ Future<void> init() async {
   // Use cases
   sl.registerLazySingleton(() => GetProducts(sl()));
   sl.registerLazySingleton(() => GetAllProducts(sl()));
+  sl.registerLazySingleton(() => SearchProducts(sl()));
 
   // Repository
   sl.registerLazySingleton<ProductRepository>(
@@ -71,9 +77,12 @@ Future<void> init() async {
       getProducts: sl(),
     ),
   );
+  sl.registerFactory(() => SearchCubit(sl()));
 
   // Features - Market
-  sl.registerLazySingleton<MarketRepository>(() => MarketRepositoryImpl());
+  sl.registerLazySingleton<MarketRemoteDataSource>(() => MarketRemoteDataSourceImpl(sl()));
+  sl.registerLazySingleton<MarketRepository>(() => MarketRepositoryImpl(sl()));
   sl.registerLazySingleton(() => GetMarketRates(sl()));
-  sl.registerFactory(() => MarketCubit(getMarketRates: sl()));
+  sl.registerLazySingleton(() => GetMarketDetails(sl()));
+  sl.registerFactory(() => MarketCubit(getMarketRates: sl(), getMarketDetails: sl()));
 }

@@ -1,13 +1,20 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:truce_app/core/theme/app_colors.dart';
 import 'package:truce_app/features/products/presentation/cubit/product_cubit.dart';
+import 'package:truce_app/features/products/presentation/cubit/search_cubit.dart';
 import 'package:truce_app/features/products/presentation/widgets/product_card.dart';
 import 'package:truce_app/features/products/presentation/pages/product_details_page.dart';
+import 'package:truce_app/features/products/presentation/pages/search_page.dart';
 import 'package:truce_app/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:truce_app/features/market/presentation/cubit/market_cubit.dart';
 import 'package:truce_app/features/market/domain/entities/market_rate.dart';
+import 'package:truce_app/features/market/presentation/cubit/market_state.dart';
+import 'package:truce_app/features/market/domain/entities/market_instrument.dart';
+import 'package:truce_app/features/market/presentation/widgets/market_details_dialog.dart';
 import 'package:truce_app/core/widgets/shimmer_loader.dart';
 import 'package:truce_app/features/auth/presentation/widgets/auth_prompt_dialog.dart';
 
@@ -23,6 +30,12 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedCategoryIndex = 0;
 
+  PageController? _marketPageController;
+  Timer? _marketAutoTimer;
+  int _marketPageIndex = 0;
+
+  late final TextEditingController _homeSearchController;
+
   final List<Map<String, dynamic>> _categories = [
     {'icon': Icons.apps, 'label': 'All'},
     {'icon': Icons.smartphone, 'label': 'Phones'},
@@ -34,6 +47,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _homeSearchController = TextEditingController();
     // Fetch products (guard inside cubit)
     context.read<ProductCubit>().fetchAllProducts();
     context.read<MarketCubit>().fetchRates();
@@ -46,6 +60,14 @@ class _HomePageState extends State<HomePage> {
         AuthPromptDialog.show(context);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _marketAutoTimer?.cancel();
+    _marketPageController?.dispose();
+    _homeSearchController.dispose();
+    super.dispose();
   }
 
   String _greeting() {
@@ -191,30 +213,132 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildMarketOverview() {
-    return BlocBuilder<MarketCubit, List<MarketRate>>(
-      builder: (context, rates) {
+    return BlocConsumer<MarketCubit, MarketState>(
+      listener: (context, state) {
+        final message = state.errorMessage;
+        if (message != null && message.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message)),
+          );
+        }
+      },
+      builder: (context, state) {
+        _ensureMarketCarouselStarted();
+        final rates = state.rates;
+        _ensureMarketIndexInRange(rates.length);
+        final controller = _marketPageController;
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Row(
-            children: rates.isEmpty
-                ? [
-                    const Expanded(child: ShimmerLoader(width: double.infinity, height: 80)),
-                    const SizedBox(width: 12),
-                    const Expanded(child: ShimmerLoader(width: double.infinity, height: 80)),
-                  ]
-                : List.generate(rates.length > 2 ? 2 : rates.length, (i) {
-                    final rate = rates[i];
-                    return Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(right: i == 0 ? 10 : 0),
-                        child: _buildMarketCard(rate),
+          child: rates.isEmpty
+              ? Row(
+                  children: const [
+                    Expanded(child: ShimmerLoader(width: double.infinity, height: 102)),
+                    SizedBox(width: 12),
+                    Expanded(child: ShimmerLoader(width: double.infinity, height: 102)),
+                  ],
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 102,
+                      child: PageView.builder(
+                        controller: controller,
+                        itemCount: rates.length,
+                        onPageChanged: (i) => _marketPageIndex = i,
+                        itemBuilder: (context, i) {
+                          final rate = rates[i];
+                          final instrument = _instrumentForLabel(rate.label);
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: GestureDetector(
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  useRootNavigator: false,
+                                  builder: (_) => BlocProvider.value(
+                                    value: context.read<MarketCubit>(),
+                                    child: MarketDetailsDialog(
+                                      instrument: instrument,
+                                      title: rate.label,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: _buildMarketCard(rate),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  }),
-          ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.08, end: 0),
-        );
+                    ),
+                    const SizedBox(height: 10),
+                    if (controller != null)
+                      SmoothPageIndicator(
+                        controller: controller,
+                        count: rates.length,
+                        effect: WormEffect(
+                          dotHeight: 7,
+                          dotWidth: 7,
+                          spacing: 6,
+                          activeDotColor: AppColors.primary,
+                          dotColor: Colors.grey.shade300,
+                        ),
+                        onDotClicked: (index) {
+                          _marketPageIndex = index;
+                          controller.animateToPage(
+                            index,
+                            duration: const Duration(milliseconds: 450),
+                            curve: Curves.easeInOut,
+                          );
+                        },
+                      ),
+                  ],
+                ),
+        ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.08, end: 0);
       },
     );
+  }
+
+  void _ensureMarketCarouselStarted() {
+    _marketPageController ??= PageController(viewportFraction: 0.62);
+    _marketAutoTimer ??= Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) return;
+      final controller = _marketPageController;
+      if (controller == null) return;
+
+      final count = context.read<MarketCubit>().state.rates.length;
+      if (count < 2) return;
+      if (!controller.hasClients) return;
+
+      _marketPageIndex = (_marketPageIndex + 1) % count;
+      controller.animateToPage(
+        _marketPageIndex,
+        duration: const Duration(milliseconds: 550),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  void _ensureMarketIndexInRange(int count) {
+    if (count <= 0) return;
+    if (_marketPageIndex < count) return;
+    _marketPageIndex = 0;
+    final controller = _marketPageController;
+    if (controller == null) return;
+    if (!controller.hasClients) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!controller.hasClients) return;
+      controller.jumpToPage(0);
+    });
+  }
+
+  MarketInstrument _instrumentForLabel(String label) {
+    final l = label.toLowerCase();
+    if (l.contains('gold') && l.contains('21')) return MarketInstrument.gold21k;
+    if (l.contains('gold') && l.contains('18')) return MarketInstrument.gold18k;
+    if (l.contains('gold')) return MarketInstrument.gold24k;
+    return MarketInstrument.usd;
   }
 
   Widget _buildMarketCard(MarketRate rate) {
@@ -248,7 +372,7 @@ class _HomePageState extends State<HomePage> {
           Text(
             rate.label.contains('GOLD') || rate.label.contains('Gold')
                 ? '${rate.price.toStringAsFixed(0)} EGP'
-                : rate.price.toStringAsFixed(2),
+                : '${rate.price.toStringAsFixed(2)} EGP',
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -280,34 +404,55 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildSearchBar() {
-    return GestureDetector(
-      onTap: () => widget.onSwitchTab?.call(2),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(50),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.search, color: Colors.grey.shade400, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Search any product...',
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+    final scheme = Theme.of(context).colorScheme;
+    return Hero(
+      tag: 'search_bar',
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(50),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(
+                  alpha: Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.06,
+                ),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
-            ),
-            Icon(Icons.tune, color: Colors.grey.shade400, size: 20),
-          ],
+            ],
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.search, color: scheme.primary, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: _homeSearchController,
+                  readOnly: true,
+                  onTap: () {
+                    context.read<SearchCubit>().setQuery(_homeSearchController.text);
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SearchPage()));
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search any product...',
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: Theme.of(context).hintColor),
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () {
+                  context.read<SearchCubit>().setQuery(_homeSearchController.text);
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SearchPage()));
+                },
+                icon: Icon(Icons.tune, color: Theme.of(context).hintColor, size: 20),
+              ),
+            ],
+          ),
         ),
       ),
     ).animate().fade(delay: 100.ms);
@@ -328,7 +473,13 @@ class _HomePageState extends State<HomePage> {
               final cat = _categories[index];
               final isSelected = _selectedCategoryIndex == index;
               return GestureDetector(
-                onTap: () => setState(() => _selectedCategoryIndex = index),
+                onTap: () {
+                  setState(() => _selectedCategoryIndex = index);
+                  final label = (cat['label'] as String);
+                  context.read<SearchCubit>().setCategory(label == 'All' ? null : label);
+                  context.read<SearchCubit>().searchFirstPage();
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SearchPage()));
+                },
                 child: Padding(
                   padding: const EdgeInsets.only(right: 16),
                   child: Column(
