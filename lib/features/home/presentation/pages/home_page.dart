@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:truce_app/core/localization/app_localizations.dart';
 import 'package:truce_app/core/theme/app_colors.dart';
 import 'package:truce_app/features/products/presentation/cubit/product_cubit.dart';
 import 'package:truce_app/features/products/presentation/cubit/search_cubit.dart';
@@ -17,6 +18,19 @@ import 'package:truce_app/features/market/domain/entities/market_instrument.dart
 import 'package:truce_app/features/market/presentation/widgets/market_details_dialog.dart';
 import 'package:truce_app/core/widgets/shimmer_loader.dart';
 import 'package:truce_app/features/auth/presentation/widgets/auth_prompt_dialog.dart';
+
+/// Category data: translation key, icon, API-compatible category value.
+class _CategoryItem {
+  final String translationKey;
+  final IconData icon;
+  final String? apiValue;
+
+  const _CategoryItem({
+    required this.translationKey,
+    required this.icon,
+    this.apiValue,
+  });
+}
 
 class HomePage extends StatefulWidget {
   final void Function(int tabIndex)? onSwitchTab;
@@ -36,23 +50,21 @@ class _HomePageState extends State<HomePage> {
 
   late final TextEditingController _homeSearchController;
 
-  final List<Map<String, dynamic>> _categories = [
-    {'icon': Icons.apps, 'label': 'All'},
-    {'icon': Icons.smartphone, 'label': 'Phones'},
-    {'icon': Icons.laptop, 'label': 'Laptops'},
-    {'icon': Icons.checkroom, 'label': 'Fashion'},
-    {'icon': Icons.home, 'label': 'Home'},
+  static const _categoryItems = <_CategoryItem>[
+    _CategoryItem(translationKey: 'cat_all', icon: Icons.apps_rounded),
+    _CategoryItem(translationKey: 'cat_electronics', icon: Icons.devices_rounded, apiValue: 'Electronics'),
+    _CategoryItem(translationKey: 'cat_fashion', icon: Icons.checkroom_rounded, apiValue: 'Fashion'),
+    _CategoryItem(translationKey: 'cat_home', icon: Icons.home_outlined, apiValue: 'Home'),
+    _CategoryItem(translationKey: 'cat_sports', icon: Icons.sports_soccer_outlined, apiValue: 'Sports'),
   ];
 
   @override
   void initState() {
     super.initState();
     _homeSearchController = TextEditingController();
-    // Fetch products (guard inside cubit)
     context.read<ProductCubit>().fetchAllProducts();
     context.read<MarketCubit>().fetchRates();
 
-    // 15-second guest dialog
     Future.delayed(const Duration(seconds: 15), () {
       if (!mounted) return;
       final authState = context.read<AuthCubit>().state;
@@ -70,20 +82,21 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  String _greeting() {
+  String _greeting(BuildContext context) {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return context.tr('good_morning', fallback: 'Good morning');
+    if (hour < 17) return context.tr('good_afternoon', fallback: 'Good afternoon');
+    return context.tr('good_evening', fallback: 'Good evening');
   }
 
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthCubit>().state.user;
     final userName = user.displayName ?? user.email?.split('@')[0] ?? 'Guest';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // ── SliverAppBar ─────────────────────────────────────────────
@@ -96,7 +109,6 @@ class _HomePageState extends State<HomePage> {
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 children: [
-                  // Gradient background
                   Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
@@ -106,7 +118,6 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                  // Decorative circle
                   Positioned(
                     right: -40,
                     top: -40,
@@ -125,14 +136,13 @@ class _HomePageState extends State<HomePage> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // Greeting
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
-                                  '${_greeting()}, 👋',
+                                  '${_greeting(context)}, 👋',
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.85),
                                     fontSize: 13,
@@ -152,7 +162,6 @@ class _HomePageState extends State<HomePage> {
                               ],
                             ),
                           ),
-                          // Icon buttons
                           Row(
                             children: [
                               _appBarIconBtn(Icons.notifications_none),
@@ -174,25 +183,18 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Market rate cards
                 _buildMarketOverview(),
-
-                // Search bar
                 _buildSearchBar(),
-
-                // Categories
-                _buildCategoriesSection(),
-
-                // Flash Sale banner
+                _buildCategoriesSection(isDark),
                 _buildFlashSaleBanner(),
-
-                // Featured Deals header
-                _buildSectionHeader('Featured Deals', () {}),
+                _buildSectionHeader(
+                  context.tr('featured_deals', fallback: 'Featured Deals'),
+                  () {},
+                ),
               ],
             ),
           ),
 
-          // Products grid
           _buildFeaturedGrid(),
 
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -217,9 +219,8 @@ class _HomePageState extends State<HomePage> {
       listener: (context, state) {
         final message = state.errorMessage;
         if (message != null && message.isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(message)),
-          );
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(message)));
         }
       },
       builder: (context, state) {
@@ -230,8 +231,8 @@ class _HomePageState extends State<HomePage> {
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           child: rates.isEmpty
-              ? Row(
-                  children: const [
+              ? const Row(
+                  children: [
                     Expanded(child: ShimmerLoader(width: double.infinity, height: 102)),
                     SizedBox(width: 12),
                     Expanded(child: ShimmerLoader(width: double.infinity, height: 102)),
@@ -305,11 +306,8 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
       final controller = _marketPageController;
       if (controller == null) return;
-
       final count = context.read<MarketCubit>().state.rates.length;
-      if (count < 2) return;
-      if (!controller.hasClients) return;
-
+      if (count < 2 || !controller.hasClients) return;
       _marketPageIndex = (_marketPageIndex + 1) % count;
       controller.animateToPage(
         _marketPageIndex,
@@ -320,15 +318,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _ensureMarketIndexInRange(int count) {
-    if (count <= 0) return;
-    if (_marketPageIndex < count) return;
+    if (count <= 0 || _marketPageIndex < count) return;
     _marketPageIndex = 0;
     final controller = _marketPageController;
-    if (controller == null) return;
-    if (!controller.hasClients) return;
+    if (controller == null || !controller.hasClients) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (!controller.hasClients) return;
+      if (!mounted || !controller.hasClients) return;
       controller.jumpToPage(0);
     });
   }
@@ -342,7 +337,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildMarketCard(MarketRate rate) {
-    final changeColor = rate.isUp ? AppColors.accentOrange : AppColors.lightGreen;
+    final changeColor =
+        rate.isUp ? AppColors.accentOrange : AppColors.lightGreen;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -370,7 +366,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 6),
           Text(
-            rate.label.contains('GOLD') || rate.label.contains('Gold')
+            rate.label.contains('Gold')
                 ? '${rate.price.toStringAsFixed(0)} EGP'
                 : '${rate.price.toStringAsFixed(2)} EGP',
             style: const TextStyle(
@@ -418,7 +414,9 @@ class _HomePageState extends State<HomePage> {
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(
-                  alpha: Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.06,
+                  alpha: Theme.of(context).brightness == Brightness.dark
+                      ? 0.35
+                      : 0.06,
                 ),
                 blurRadius: 10,
                 offset: const Offset(0, 2),
@@ -434,22 +432,35 @@ class _HomePageState extends State<HomePage> {
                   controller: _homeSearchController,
                   readOnly: true,
                   onTap: () {
-                    context.read<SearchCubit>().setQuery(_homeSearchController.text);
-                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SearchPage()));
+                    context
+                        .read<SearchCubit>()
+                        .setQuery(_homeSearchController.text);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const SearchPage()),
+                    );
                   },
                   decoration: InputDecoration(
-                    hintText: 'Search any product...',
+                    hintText: context.tr('search_hint'),
                     border: InputBorder.none,
-                    hintStyle: TextStyle(color: Theme.of(context).hintColor),
+                    hintStyle:
+                        TextStyle(color: Theme.of(context).hintColor),
                   ),
                 ),
               ),
               IconButton(
                 onPressed: () {
-                  context.read<SearchCubit>().setQuery(_homeSearchController.text);
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SearchPage()));
+                  context
+                      .read<SearchCubit>()
+                      .setQuery(_homeSearchController.text);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SearchPage()),
+                  );
                 },
-                icon: Icon(Icons.tune, color: Theme.of(context).hintColor, size: 20),
+                icon: Icon(
+                  Icons.tune,
+                  color: Theme.of(context).hintColor,
+                  size: 20,
+                ),
               ),
             ],
           ),
@@ -458,27 +469,31 @@ class _HomePageState extends State<HomePage> {
     ).animate().fade(delay: 100.ms);
   }
 
-  Widget _buildCategoriesSection() {
+  Widget _buildCategoriesSection(bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Categories', () {}),
+        _buildSectionHeader(
+          context.tr('categories', fallback: 'Categories'),
+          () {},
+        ),
         SizedBox(
           height: 90,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _categories.length,
+            itemCount: _categoryItems.length,
             itemBuilder: (context, index) {
-              final cat = _categories[index];
+              final cat = _categoryItems[index];
               final isSelected = _selectedCategoryIndex == index;
               return GestureDetector(
                 onTap: () {
                   setState(() => _selectedCategoryIndex = index);
-                  final label = (cat['label'] as String);
-                  context.read<SearchCubit>().setCategory(label == 'All' ? null : label);
+                  context.read<SearchCubit>().setCategory(cat.apiValue);
                   context.read<SearchCubit>().searchFirstPage();
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SearchPage()));
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SearchPage()),
+                  );
                 },
                 child: Padding(
                   padding: const EdgeInsets.only(right: 16),
@@ -488,31 +503,40 @@ class _HomePageState extends State<HomePage> {
                         width: 52,
                         height: 52,
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primary : Colors.white,
+                          color: isSelected
+                              ? AppColors.primary
+                              : Theme.of(context).cardColor,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
                               color: isSelected
                                   ? AppColors.primary.withValues(alpha: 0.3)
-                                  : Colors.black.withValues(alpha: 0.06),
+                                  : Colors.black.withValues(
+                                      alpha: isDark ? 0.2 : 0.06),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
                           ],
                         ),
                         child: Icon(
-                          cat['icon'] as IconData,
-                          color: isSelected ? Colors.white : Colors.grey.shade500,
+                          cat.icon,
+                          color: isSelected
+                              ? Colors.white
+                              : Theme.of(context).iconTheme.color,
                           size: 22,
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        cat['label'] as String,
+                        context.tr(cat.translationKey),
                         style: TextStyle(
                           fontSize: 11,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected ? AppColors.primary : Colors.grey.shade600,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: isSelected
+                              ? AppColors.primary
+                              : Theme.of(context).textTheme.bodySmall?.color,
                         ),
                       ),
                     ],
@@ -547,7 +571,6 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Stack(
         children: [
-          // Decorative circle
           Positioned(
             right: -20,
             bottom: -20,
@@ -564,26 +587,29 @@ class _HomePageState extends State<HomePage> {
             padding: const EdgeInsets.all(18),
             child: Row(
               children: [
-                // Left text content
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.accentOrange,
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('🔥', style: TextStyle(fontSize: 11)),
-                            SizedBox(width: 4),
+                            const Text('🔥',
+                                style: TextStyle(fontSize: 11)),
+                            const SizedBox(width: 4),
                             Text(
-                              'FLASH SALE · ENDS TONIGHT',
-                              style: TextStyle(
+                              context.tr('flash_sale'),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 9,
                                 fontWeight: FontWeight.bold,
@@ -594,9 +620,10 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Up to 40% off\nElectronics',
-                        style: TextStyle(
+                      Text(
+                        context.tr('up_to_40_off',
+                            fallback: 'Up to 40% off\nElectronics'),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -605,7 +632,8 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Across all 4 platforms',
+                        context.tr('across_platforms',
+                            fallback: 'Across all 4 platforms'),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.75),
                           fontSize: 12,
@@ -614,7 +642,6 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                 ),
-                // Shop Now button
                 ElevatedButton(
                   onPressed: () => widget.onSwitchTab?.call(2),
                   style: ElevatedButton.styleFrom(
@@ -623,13 +650,19 @@ class _HomePageState extends State<HomePage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     minimumSize: Size.zero,
                     elevation: 0,
                   ),
-                  child: const Text(
-                    'Shop Now',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  child: Text(
+                    context.tr('shop_now', fallback: 'Shop Now'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ],
@@ -648,14 +681,18 @@ class _HomePageState extends State<HomePage> {
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).textTheme.bodyLarge?.color,
+            ),
           ),
           GestureDetector(
             onTap: onSeeAll,
-            child: const Text(
-              'See all',
+            child: Text(
+              context.tr('see_all', fallback: 'See all'),
               style: TextStyle(
-                color: AppColors.primary,
+                color: Theme.of(context).colorScheme.primary,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -709,10 +746,14 @@ class _HomePageState extends State<HomePage> {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ProductDetailsPage(product: product, group: group),
+                        builder: (_) =>
+                            ProductDetailsPage(product: product, group: group),
                       ),
                     ),
-                  ).animate().fadeIn(delay: (index * 60).ms).slideY(begin: 0.08, end: 0);
+                  )
+                      .animate()
+                      .fadeIn(delay: (index * 60).ms)
+                      .slideY(begin: 0.08, end: 0);
                 },
                 childCount: products.length,
               ),

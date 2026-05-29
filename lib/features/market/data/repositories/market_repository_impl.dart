@@ -11,41 +11,23 @@ class MarketRepositoryImpl implements MarketRepository {
 
   MarketRepositoryImpl(this._remote);
 
+  static const _gold21kRatio = 21.0 / 24.0;
+  static const _gold18kRatio = 18.0 / 24.0;
+
   @override
   Future<Result<List<MarketRate>>> getMarketRates() async {
     try {
-      final gold24kPerGramEgp = await _remote.getGold24kEgpPerGram();
-      const gold21kRatio = 21.0 / 24.0;
-      const gold18kRatio = 18.0 / 24.0;
-      final gold21kPerGramEgp = gold24kPerGramEgp * gold21kRatio;
-      final gold18kPerGramEgp = gold24kPerGramEgp * gold18kRatio;
-      final usdToEgp = await _remote.getUsdToEgp();
+      final snapshot = await _remote.getRates();
+
+      final gold24k = snapshot.goldPerGramEgp;
+      final gold21k = gold24k * _gold21kRatio;
+      final gold18k = gold24k * _gold18kRatio;
 
       return Result.success([
-        MarketRate(
-          label: 'Gold 24K',
-          price: gold24kPerGramEgp,
-          changePercentage: 0,
-          isUp: true,
-        ),
-        MarketRate(
-          label: 'Gold 21K',
-          price: gold21kPerGramEgp,
-          changePercentage: 0,
-          isUp: true,
-        ),
-        MarketRate(
-          label: 'Gold 18K',
-          price: gold18kPerGramEgp,
-          changePercentage: 0,
-          isUp: true,
-        ),
-        MarketRate(
-          label: 'USD Rate',
-          price: usdToEgp,
-          changePercentage: 0,
-          isUp: true,
-        ),
+        MarketRate(label: 'Gold 24K', price: gold24k, changePercentage: 0, isUp: true),
+        MarketRate(label: 'Gold 21K', price: gold21k, changePercentage: 0, isUp: true),
+        MarketRate(label: 'Gold 18K', price: gold18k, changePercentage: 0, isUp: true),
+        MarketRate(label: 'USD Rate', price: snapshot.usdToEgp, changePercentage: 0, isUp: true),
       ]);
     } on Failure catch (f) {
       return Result.error(f);
@@ -57,60 +39,32 @@ class MarketRepositoryImpl implements MarketRepository {
   @override
   Future<Result<MarketDetails>> getMarketDetails(MarketInstrument instrument) async {
     try {
-      final nowUtc = DateTime.now().toUtc();
-      final yesterdayUtc = DateTime.utc(nowUtc.year, nowUtc.month, nowUtc.day).subtract(const Duration(days: 1));
+      final snapshot = await _remote.getRates();
 
-      final String base;
-      const currency = 'EGP';
+      // For gold: pass per-oz rate so the dialog can show all gram denominations.
+      // For USD: pass the direct exchange rate.
+      final double latestRate;
       switch (instrument) {
         case MarketInstrument.gold24k:
+          latestRate = snapshot.goldPerOzEgp;
+          break;
         case MarketInstrument.gold21k:
+          latestRate = snapshot.goldPerOzEgp * _gold21kRatio;
+          break;
         case MarketInstrument.gold18k:
-          base = 'XAU';
+          latestRate = snapshot.goldPerOzEgp * _gold18kRatio;
           break;
         case MarketInstrument.usd:
-          base = 'USD';
+          latestRate = snapshot.usdToEgp;
           break;
-      }
-
-      final latest = await _remote.getLatest(base: base, currency: currency);
-
-      MarketOhlc? ohlc;
-      try {
-        final ohlcSnap = await _remote.getOhlc(base: base, currency: currency, date: yesterdayUtc);
-        ohlc = MarketOhlc(
-          open: ohlcSnap.open,
-          high: ohlcSnap.high,
-          low: ohlcSnap.low,
-          close: ohlcSnap.close,
-          timestamp: ohlcSnap.timestamp,
-          date: ohlcSnap.date,
-        );
-      } catch (_) {
-        ohlc = null;
-      }
-
-      MarketChange? changeWeek;
-      try {
-        final changeSnap = await _remote.getChangeWeek(base: base, currency: currency);
-        changeWeek = MarketChange(
-          startRate: changeSnap.startRate,
-          endRate: changeSnap.endRate,
-          change: changeSnap.change,
-          changePct: changeSnap.changePct,
-          startDate: changeSnap.startDate,
-          endDate: changeSnap.endDate,
-        );
-      } catch (_) {
-        changeWeek = null;
       }
 
       return Result.success(MarketDetails(
         instrument: instrument,
-        latestRate: latest.rate,
-        latestTimestamp: latest.timestamp,
-        ohlc: ohlc,
-        changeWeek: changeWeek,
+        latestRate: latestRate,
+        latestTimestamp: snapshot.lastUpdatedUtc,
+        ohlc: null,
+        changeWeek: null,
       ));
     } on Failure catch (f) {
       return Result.error(f);

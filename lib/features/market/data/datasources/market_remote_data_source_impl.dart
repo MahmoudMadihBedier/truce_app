@@ -1,7 +1,5 @@
-import 'package:dio/dio.dart';
-import '../../../../core/config/metalpriceapi_config.dart';
-import '../../../../core/error/failures.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/error/failures.dart';
 import 'market_remote_data_source.dart';
 
 class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
@@ -9,206 +7,32 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
 
   MarketRemoteDataSourceImpl(this._apiClient);
 
-  static final RegExp _apiKeyPattern = RegExp(r'^[a-fA-F0-9]{32}$');
-
   @override
-  Future<double> getUsdToEgp() async {
-    final snapshot = await getLatest(base: 'USD', currency: 'EGP');
-    return snapshot.rate;
-  }
-
-  @override
-  Future<double> getGold24kEgpPerGram() async {
-    // Use XAU (1 troy ounce of gold) as base, get its value in EGP.
-    // Convert ounce -> gram to display a more familiar "Gold 24K" price.
-    const gramsPerTroyOunce = 31.1034768;
-    final snapshot = await getLatest(base: 'XAU', currency: 'EGP');
-    return snapshot.rate / gramsPerTroyOunce;
-  }
-
-  @override
-  Future<MarketLatestSnapshot> getLatest({required String base, required String currency}) async {
-    _validateApiKey();
-    if (base.trim().isEmpty || currency.trim().isEmpty) {
-      throw const ValidationFailure('Invalid base/currency');
-    }
-
-    final Response response = await _apiClient.get(
-      '${MetalPriceApiConfig.baseUrl}/latest',
-      queryParameters: {
-        'api_key': MetalPriceApiConfig.apiKey,
-        'base': base,
-        'currencies': currency,
-      },
-    );
+  Future<TruceRatesSnapshot> getRates() async {
+    final response = await _apiClient.get('/api/rates');
 
     final data = response.data;
     if (data is! Map<String, dynamic>) {
-      throw const ServerFailure('Invalid response from metalpriceapi');
+      throw const ServerFailure('Invalid rates response from server');
     }
 
-    final rawTimestamp = data['timestamp'];
-    if (rawTimestamp is! num) {
-      throw const ServerFailure('Missing timestamp in metalpriceapi response');
-    }
-
-    final rates = data['rates'];
-    if (rates is! Map) {
-      throw const ServerFailure('Missing rates in metalpriceapi response');
-    }
-
-    final dynamic raw = rates[currency];
-    final double parsedRate;
-    if (raw is num) {
-      parsedRate = raw.toDouble();
-    } else if (raw is String) {
-      parsedRate = double.parse(raw);
-    } else {
-      throw ServerFailure('Missing $currency rate in metalpriceapi response');
-    }
-
-    return MarketLatestSnapshot(
-      base: base,
-      currency: currency,
-      rate: parsedRate,
-      timestamp: DateTime.fromMillisecondsSinceEpoch(
-        (rawTimestamp.toDouble() * 1000).round(),
-        isUtc: true,
-      ),
-    );
-  }
-
-  @override
-  Future<MarketOhlcSnapshot> getOhlc({
-    required String base,
-    required String currency,
-    required DateTime date,
-  }) async {
-    _validateApiKey();
-    if (base.trim().isEmpty || currency.trim().isEmpty) {
-      throw const ValidationFailure('Invalid base/currency');
-    }
-
-    final yyyy = date.toUtc().year.toString().padLeft(4, '0');
-    final mm = date.toUtc().month.toString().padLeft(2, '0');
-    final dd = date.toUtc().day.toString().padLeft(2, '0');
-    final formattedDate = '$yyyy-$mm-$dd';
-
-    final Response response = await _apiClient.get(
-      '${MetalPriceApiConfig.baseUrl}/ohlc',
-      queryParameters: {
-        'api_key': MetalPriceApiConfig.apiKey,
-        'base': base,
-        'currency': currency,
-        'date': formattedDate,
-      },
-    );
-
-    final data = response.data;
-    if (data is! Map<String, dynamic>) {
-      throw const ServerFailure('Invalid OHLC response from metalpriceapi');
-    }
-
-    final rawTimestamp = data['timestamp'];
-    if (rawTimestamp is! num) {
-      throw const ServerFailure('Missing timestamp in OHLC response');
-    }
-
-    final rate = data['rate'];
-    if (rate is! Map) {
-      throw const ServerFailure('Missing rate in OHLC response');
-    }
-
-    double readNum(String key) {
-      final v = rate[key];
+    double parseNum(String key) {
+      final v = data[key];
       if (v is num) return v.toDouble();
       if (v is String) return double.parse(v);
-      throw ServerFailure('Missing $key in OHLC response');
+      throw ServerFailure('Missing or invalid field "$key" in rates response');
     }
 
-    return MarketOhlcSnapshot(
-      base: base,
-      currency: currency,
-      open: readNum('open'),
-      high: readNum('high'),
-      low: readNum('low'),
-      close: readNum('close'),
-      timestamp: DateTime.fromMillisecondsSinceEpoch(
-        (rawTimestamp.toDouble() * 1000).round(),
-        isUtc: true,
-      ),
-      date: DateTime.parse(formattedDate),
+    final lastUpdatedRaw = data['last_updated_utc'];
+    final DateTime lastUpdated = lastUpdatedRaw is String
+        ? DateTime.parse(lastUpdatedRaw)
+        : DateTime.now().toUtc();
+
+    return TruceRatesSnapshot(
+      usdToEgp: parseNum('usd_to_egp'),
+      goldPerGramEgp: parseNum('gold_per_gram_egp'),
+      goldPerOzEgp: parseNum('gold_per_oz_egp'),
+      lastUpdatedUtc: lastUpdated,
     );
-  }
-
-  @override
-  Future<MarketChangeSnapshot> getChangeWeek({required String base, required String currency}) async {
-    _validateApiKey();
-    if (base.trim().isEmpty || currency.trim().isEmpty) {
-      throw const ValidationFailure('Invalid base/currency');
-    }
-
-    final Response response = await _apiClient.get(
-      '${MetalPriceApiConfig.baseUrl}/change',
-      queryParameters: {
-        'api_key': MetalPriceApiConfig.apiKey,
-        'base': base,
-        'currencies': currency,
-        'date_type': 'week',
-      },
-    );
-
-    final data = response.data;
-    if (data is! Map<String, dynamic>) {
-      throw const ServerFailure('Invalid change response from metalpriceapi');
-    }
-
-    final startDateRaw = data['start_date'];
-    final endDateRaw = data['end_date'];
-    if (startDateRaw is! String || endDateRaw is! String) {
-      throw const ServerFailure('Missing start/end date in change response');
-    }
-
-    final rates = data['rates'];
-    if (rates is! Map) {
-      throw const ServerFailure('Missing rates in change response');
-    }
-
-    final entry = rates[currency];
-    if (entry is! Map) {
-      throw ServerFailure('Missing $currency in change response');
-    }
-
-    double readNum(String key) {
-      final v = entry[key];
-      if (v is num) return v.toDouble();
-      if (v is String) return double.parse(v);
-      throw ServerFailure('Missing $key in change response');
-    }
-
-    return MarketChangeSnapshot(
-      base: base,
-      currency: currency,
-      startRate: readNum('start_rate'),
-      endRate: readNum('end_rate'),
-      change: readNum('change'),
-      changePct: readNum('change_pct'),
-      startDate: DateTime.parse(startDateRaw),
-      endDate: DateTime.parse(endDateRaw),
-    );
-  }
-
-  void _validateApiKey() {
-    final key = MetalPriceApiConfig.apiKey.trim();
-    if (key.isEmpty) {
-      throw const ValidationFailure(
-        'Missing METALPRICE_API_KEY. Provide it via --dart-define=METALPRICE_API_KEY=...',
-      );
-    }
-    if (!_apiKeyPattern.hasMatch(key)) {
-      throw const ValidationFailure(
-        'Invalid METALPRICE_API_KEY format. Expected a 32-char hex string.',
-      );
-    }
   }
 }

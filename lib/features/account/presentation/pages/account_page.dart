@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:truce_app/core/localization/app_localizations.dart';
 import 'package:truce_app/core/theme/app_colors.dart';
 import 'package:truce_app/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:truce_app/core/theme/settings_cubit.dart';
@@ -12,10 +13,18 @@ class AccountPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthCubit>().state.user;
-    final displayName = user.displayName ?? (user.isGuest ? 'Guest User' : 'Truce User');
-    final email = user.email ?? (user.isGuest ? 'Browsing as guest' : '');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Build initials
+    final displayName = user.displayName ??
+        (user.isGuest
+            ? context.tr('guest_user', fallback: 'Guest User')
+            : context.tr('truce_user', fallback: 'Truce User'));
+
+    final email = user.email ??
+        (user.isGuest
+            ? context.tr('browsing_as_guest', fallback: 'Browsing as guest')
+            : '');
+
     final parts = displayName.trim().split(' ');
     final initials = parts.length >= 2
         ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
@@ -24,7 +33,7 @@ class AccountPage extends StatelessWidget {
             : 'G';
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -70,11 +79,13 @@ class AccountPage extends StatelessWidget {
                                     child: Image.network(
                                       user.photoUrl!,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => _initialsAvatar(initials),
+                                      errorBuilder: (_, __, ___) =>
+                                          _initialsAvatar(initials),
                                     ),
                                   )
                                 : _initialsAvatar(initials),
-                          ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
+                          ).animate().scale(
+                              duration: 500.ms, curve: Curves.easeOutBack),
 
                           const SizedBox(height: 12),
 
@@ -107,15 +118,22 @@ class AccountPage extends StatelessWidget {
                           child: GestureDetector(
                             onTap: () {},
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                                border: Border.all(
+                                    color:
+                                        Colors.white.withValues(alpha: 0.4)),
                               ),
-                              child: const Text(
-                                'Edit',
-                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                              child: Text(
+                                context.tr('edit', fallback: 'Edit'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),
@@ -130,10 +148,9 @@ class AccountPage extends StatelessWidget {
             Container(
               color: AppColors.primary,
               child: Container(
-                margin: const EdgeInsets.only(top: 0),
-                decoration: const BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(24),
                     topRight: Radius.circular(24),
                   ),
@@ -142,11 +159,11 @@ class AccountPage extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      _statCard('Total Orders', '0'),
+                      _statCard(context, context.tr('total_orders'), '0'),
                       const SizedBox(width: 10),
-                      _statCard('Coupons Used', '0'),
+                      _statCard(context, context.tr('coupons_used'), '0'),
                       const SizedBox(width: 10),
-                      _statCard('Total Saved', '0 EGP'),
+                      _statCard(context, context.tr('total_saved'), '0 EGP'),
                     ],
                   ).animate().fade(delay: 250.ms).slideY(begin: 0.1, end: 0),
                 ),
@@ -156,100 +173,112 @@ class AccountPage extends StatelessWidget {
             const SizedBox(height: 8),
 
             // ── PREFERENCES section ───────────────────────────────────
-            _sectionLabel('PREFERENCES'),
+            _sectionLabel(context, context.tr('preferences').toUpperCase()),
 
-            _settingsCard([
+            _settingsCard(context, [
               _prefsItem(
+                context,
                 icon: Icons.notifications_outlined,
-                title: 'Price Alerts',
-                trailing: _greenChip('3 active'),
+                title: context.tr('price_alerts'),
+                trailing: _greenChip(context,
+                    context.tr('active_3', fallback: '3 active')),
               ),
-              _divider(),
+              _divider(context),
               _prefsItem(
+                context,
                 icon: Icons.favorite_border,
-                title: 'Wishlist',
+                title: context.tr('wishlist'),
                 trailing: Text(
-                  '0 saved',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                  context.tr('saved_0', fallback: '0 saved'),
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.bodySmall?.color,
+                    fontSize: 13,
+                  ),
                 ),
               ),
-              _divider(),
+              _divider(context),
               _prefsItem(
+                context,
                 icon: Icons.currency_exchange,
-                title: 'Currency Display',
+                title: context.tr('currency_display'),
                 trailing: Text(
-                  'Egyptian Pound (EGP)',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                  context.tr('currency_egp', fallback: 'Egyptian Pound (EGP)'),
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.bodySmall?.color,
+                    fontSize: 12,
+                  ),
                 ),
               ),
-              _divider(),
+              _divider(context),
               // Dark Mode
-              Builder(
-                builder: (context) => _prefsItem(
-                  icon: Icons.dark_mode_outlined,
-                  title: 'Dark Mode',
-                  trailing: BlocBuilder<SettingsCubit, SettingsState>(
-                    builder: (ctx, settings) => Switch(
-                      value: settings.themeMode == ThemeMode.dark,
-                      onChanged: (_) => ctx.read<SettingsCubit>().toggleTheme(),
-                      activeThumbColor: AppColors.primary,
-                    ),
+              _prefsItem(
+                context,
+                icon: isDark ? Icons.dark_mode : Icons.dark_mode_outlined,
+                title: context.tr('dark_mode'),
+                trailing: BlocBuilder<SettingsCubit, SettingsState>(
+                  builder: (ctx, settings) => Switch(
+                    value: settings.themeMode == ThemeMode.dark,
+                    onChanged: (_) => ctx.read<SettingsCubit>().toggleTheme(),
                   ),
                 ),
               ),
-              _divider(),
+              _divider(context),
               // Language
-              Builder(
-                builder: (context) => _prefsItem(
-                  icon: Icons.language_outlined,
-                  title: 'Language',
-                  trailing: BlocBuilder<SettingsCubit, SettingsState>(
-                    builder: (ctx, settings) => Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          settings.locale.languageCode == 'en' ? 'English' : 'العربية',
-                          style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+              _prefsItem(
+                context,
+                icon: Icons.language_outlined,
+                title: context.tr('language'),
+                trailing: BlocBuilder<SettingsCubit, SettingsState>(
+                  builder: (ctx, settings) => Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        settings.locale.languageCode == 'en'
+                            ? ctx.tr('english', fallback: 'English')
+                            : ctx.tr('arabic', fallback: 'العربية'),
+                        style: TextStyle(
+                          color: Theme.of(ctx).textTheme.bodySmall?.color,
+                          fontSize: 13,
                         ),
-                        const SizedBox(width: 4),
-                        Icon(Icons.chevron_right, size: 18, color: Colors.grey.shade400),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 18,
+                        color: Theme.of(ctx).textTheme.bodySmall?.color,
+                      ),
+                    ],
                   ),
-                  onTap: () => _showLanguageDialog(context),
                 ),
+                onTap: () => _showLanguageDialog(context),
               ),
             ]).animate().fade(delay: 350.ms),
 
             const SizedBox(height: 12),
 
             // ── PLATFORMS section ─────────────────────────────────────
-            _sectionLabel('PLATFORMS'),
+            _sectionLabel(context, context.tr('platforms').toUpperCase()),
 
-            _settingsCard([
-              _prefsItem(
-                leading: _platformAvatar('A', const Color(0xFFFF9900)),
-                title: 'Amazon Egypt',
-                trailing: _greenChip('On'),
-              ),
-              _divider(),
-              _prefsItem(
-                leading: _platformAvatar('N', const Color(0xFFFEC52E)),
-                title: 'Noon Egypt',
-                trailing: _greenChip('On'),
-              ),
-              _divider(),
-              _prefsItem(
-                leading: _platformAvatar('J', const Color(0xFFE74C3C)),
-                title: 'Jumia Egypt',
-                trailing: _greenChip('On'),
-              ),
-              _divider(),
-              _prefsItem(
-                leading: _platformAvatar('C', const Color(0xFF003CB6)),
-                title: 'Carrefour Egypt',
-                trailing: _greenChip('On'),
-              ),
+            _settingsCard(context, [
+              _prefsItem(context,
+                  leading: _platformAvatar('A', const Color(0xFFFF9900)),
+                  title: 'Amazon Egypt',
+                  trailing: _greenChip(context, context.tr('on', fallback: 'On'))),
+              _divider(context),
+              _prefsItem(context,
+                  leading: _platformAvatar('N', const Color(0xFFFEC52E)),
+                  title: 'Noon Egypt',
+                  trailing: _greenChip(context, context.tr('on', fallback: 'On'))),
+              _divider(context),
+              _prefsItem(context,
+                  leading: _platformAvatar('J', const Color(0xFFE74C3C)),
+                  title: 'Jumia Egypt',
+                  trailing: _greenChip(context, context.tr('on', fallback: 'On'))),
+              _divider(context),
+              _prefsItem(context,
+                  leading: _platformAvatar('C', const Color(0xFF003CB6)),
+                  title: 'Carrefour Egypt',
+                  trailing: _greenChip(context, context.tr('on', fallback: 'On'))),
             ]).animate().fade(delay: 450.ms),
 
             const SizedBox(height: 20),
@@ -268,15 +297,18 @@ class AccountPage extends StatelessWidget {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade50,
+                  backgroundColor:
+                      isDark ? const Color(0xFF3A1A1A) : Colors.red.shade50,
                   foregroundColor: Colors.red,
                   minimumSize: const Size(double.infinity, 52),
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
-                child: const Text(
-                  'Log Out',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                child: Text(
+                  context.tr('log_out', fallback: 'Log Out'),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 15),
                 ),
               ),
             ).animate().fade(delay: 500.ms),
@@ -301,16 +333,17 @@ class AccountPage extends StatelessWidget {
     );
   }
 
-  Widget _statCard(String label, String value) {
+  Widget _statCard(BuildContext context, String label, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -320,16 +353,19 @@ class AccountPage extends StatelessWidget {
           children: [
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: AppColors.primary,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 10),
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodySmall?.color,
+                fontSize: 10,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -338,7 +374,7 @@ class AccountPage extends StatelessWidget {
     );
   }
 
-  Widget _sectionLabel(String label) {
+  Widget _sectionLabel(BuildContext context, String label) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
       child: Text(
@@ -346,22 +382,23 @@ class AccountPage extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: Colors.grey.shade500,
+          color: Theme.of(context).textTheme.bodySmall?.color,
           letterSpacing: 1,
         ),
       ),
     );
   }
 
-  Widget _settingsCard(List<Widget> children) {
+  Widget _settingsCard(BuildContext context, List<Widget> children) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -371,16 +408,17 @@ class AccountPage extends StatelessWidget {
     );
   }
 
-  Widget _divider() {
+  Widget _divider(BuildContext context) {
     return Divider(
       height: 1,
       indent: 16,
       endIndent: 16,
-      color: Colors.grey.shade100,
+      color: Theme.of(context).dividerColor,
     );
   }
 
-  Widget _prefsItem({
+  Widget _prefsItem(
+    BuildContext context, {
     IconData? icon,
     Widget? leading,
     required String title,
@@ -395,12 +433,17 @@ class AccountPage extends StatelessWidget {
         child: Row(
           children: [
             leading ??
-                Icon(icon, size: 22, color: Colors.grey.shade600),
+                Icon(icon, size: 22,
+                    color: Theme.of(context).textTheme.bodySmall?.color),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                ),
               ),
             ),
             if (trailing != null) trailing,
@@ -410,17 +453,18 @@ class AccountPage extends StatelessWidget {
     );
   }
 
-  Widget _greenChip(String label) {
+  Widget _greenChip(BuildContext context, String label) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.paleGreen,
+        color: isDark ? AppColors.darkPaleGreen : AppColors.paleGreen,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: AppColors.primary,
+        style: TextStyle(
+          color: isDark ? AppColors.lightGreen : AppColors.primary,
           fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
@@ -453,14 +497,16 @@ class AccountPage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Select Language', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          context.tr('select_language', fallback: 'Select Language'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
               leading: const Text('🇬🇧', style: TextStyle(fontSize: 22)),
-              title: const Text('English'),
+              title: Text(context.tr('english', fallback: 'English')),
               onTap: () {
                 context.read<SettingsCubit>().setLocale(const Locale('en'));
                 Navigator.pop(ctx);
@@ -468,7 +514,7 @@ class AccountPage extends StatelessWidget {
             ),
             ListTile(
               leading: const Text('🇪🇬', style: TextStyle(fontSize: 22)),
-              title: const Text('العربية'),
+              title: Text(context.tr('arabic', fallback: 'العربية')),
               onTap: () {
                 context.read<SettingsCubit>().setLocale(const Locale('ar'));
                 Navigator.pop(ctx);

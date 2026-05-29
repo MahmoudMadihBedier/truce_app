@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/shimmer_loader.dart';
 import '../../../../core/error/result.dart';
@@ -25,18 +26,19 @@ class MarketDetailsDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: FutureBuilder<Result<MarketDetails>>(
           future: context.read<MarketCubit>().fetchDetails(instrument),
           builder: (context, snap) {
             final result = snap.data;
-            if (snap.connectionState != ConnectionState.done || result == null) {
+            if (snap.connectionState != ConnectionState.done ||
+                result == null) {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _header(context, subtitle: 'Loading…'),
+                  _header(context,
+                      subtitle: context.tr('loading', fallback: 'Loading…')),
                   const SizedBox(height: 14),
                   const ShimmerLoader(width: double.infinity, height: 16),
                   const SizedBox(height: 10),
@@ -52,18 +54,22 @@ class MarketDetailsDialog extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _header(context, subtitle: 'Failed to load'),
+                  _header(context,
+                      subtitle: context.tr('failed_to_load',
+                          fallback: 'Failed to load')),
                   const SizedBox(height: 12),
                   Text(
                     result.failure!.message,
-                    style: const TextStyle(color: Colors.black87),
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Align(
-                    alignment: Alignment.centerRight,
+                    alignment: AlignmentDirectional.centerEnd,
                     child: TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Close'),
+                      child: Text(context.tr('close', fallback: 'Close')),
                     ),
                   ),
                 ],
@@ -75,29 +81,33 @@ class MarketDetailsDialog extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _header(context, subtitle: _formatTime(details.latestTimestamp)),
+                _header(context,
+                    subtitle: _formatTime(details.latestTimestamp)),
                 const SizedBox(height: 12),
-                _sectionTitle('Latest'),
+                _sectionTitle(context,
+                    context.tr('latest_rates', fallback: 'Latest')),
                 const SizedBox(height: 8),
-                ..._latestRows(details),
+                ..._latestRows(context, details),
                 if (details.ohlc != null) ...[
                   const SizedBox(height: 14),
-                  _sectionTitle('OHLC (Yesterday, GMT)'),
+                  _sectionTitle(context,
+                      context.tr('ohlc_yesterday', fallback: 'OHLC (Yesterday, GMT)')),
                   const SizedBox(height: 8),
-                  ..._ohlcRows(details.ohlc!, instrument),
+                  ..._ohlcRows(context, details.ohlc!, instrument),
                 ],
                 if (details.changeWeek != null) ...[
                   const SizedBox(height: 14),
-                  _sectionTitle('Change (7 days)'),
+                  _sectionTitle(context,
+                      context.tr('change_7days', fallback: 'Change (7 days)')),
                   const SizedBox(height: 8),
-                  ..._changeRows(details.changeWeek!, instrument),
+                  ..._changeRows(context, details.changeWeek!, instrument),
                 ],
                 const SizedBox(height: 16),
                 Align(
-                  alignment: Alignment.centerRight,
+                  alignment: AlignmentDirectional.centerEnd,
                   child: TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Close'),
+                    child: Text(context.tr('close', fallback: 'Close')),
                   ),
                 ),
               ],
@@ -117,12 +127,19 @@ class MarketDetailsDialog extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodySmall?.color,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -135,70 +152,83 @@ class MarketDetailsDialog extends StatelessWidget {
     );
   }
 
-  Widget _sectionTitle(String text) {
+  Widget _sectionTitle(BuildContext context, String text) {
     return Text(
       text,
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary),
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w800,
+        color: Theme.of(context).colorScheme.primary,
+      ),
     );
   }
 
-  List<Widget> _latestRows(MarketDetails details) {
+  List<Widget> _latestRows(BuildContext context, MarketDetails details) {
     if (instrument == MarketInstrument.gold24k ||
         instrument == MarketInstrument.gold21k ||
         instrument == MarketInstrument.gold18k) {
       final perOunce = details.latestRate;
       final basePerGram24k = perOunce / _gramsPerTroyOunce;
-      final perGram24k = basePerGram24k;
       final perGram21k = basePerGram24k * _gold21kRatio;
       final perGram18k = basePerGram24k * _gold18kRatio;
       return [
-        _row('Per troy oz', '${perOunce.toStringAsFixed(2)} EGP'),
-        _row('Per gram 24K (est.)', '${perGram24k.toStringAsFixed(2)} EGP'),
-        _row('Per gram 21K (est.)', '${perGram21k.toStringAsFixed(2)} EGP'),
-        _row('Per gram 18K (est.)', '${perGram18k.toStringAsFixed(2)} EGP'),
+        _row(context, context.tr('per_troy_oz', fallback: 'Per troy oz'),
+            '${perOunce.toStringAsFixed(2)} EGP'),
+        _row(context, context.tr('per_gram_24k', fallback: 'Per gram 24K (est.)'),
+            '${basePerGram24k.toStringAsFixed(2)} EGP'),
+        _row(context, context.tr('per_gram_21k', fallback: 'Per gram 21K (est.)'),
+            '${perGram21k.toStringAsFixed(2)} EGP'),
+        _row(context, context.tr('per_gram_18k', fallback: 'Per gram 18K (est.)'),
+            '${perGram18k.toStringAsFixed(2)} EGP'),
       ];
     }
     return [
-      _row('1 USD', '${details.latestRate.toStringAsFixed(4)} EGP'),
+      _row(context, context.tr('one_usd', fallback: '1 USD'),
+          '${details.latestRate.toStringAsFixed(4)} EGP'),
     ];
   }
 
-  List<Widget> _ohlcRows(MarketOhlc ohlc, MarketInstrument instrument) {
+  List<Widget> _ohlcRows(
+      BuildContext context, MarketOhlc ohlc, MarketInstrument inst) {
     String fmt(double v) {
-      if (instrument == MarketInstrument.gold24k ||
-          instrument == MarketInstrument.gold21k ||
-          instrument == MarketInstrument.gold18k) {
+      if (inst == MarketInstrument.gold24k ||
+          inst == MarketInstrument.gold21k ||
+          inst == MarketInstrument.gold18k) {
         return '${v.toStringAsFixed(2)} EGP/oz';
       }
       return '${v.toStringAsFixed(4)} EGP';
     }
 
     return [
-      _row('Open', fmt(ohlc.open)),
-      _row('High', fmt(ohlc.high)),
-      _row('Low', fmt(ohlc.low)),
-      _row('Close', fmt(ohlc.close)),
+      _row(context, 'Open', fmt(ohlc.open)),
+      _row(context, 'High', fmt(ohlc.high)),
+      _row(context, 'Low', fmt(ohlc.low)),
+      _row(context, 'Close', fmt(ohlc.close)),
     ];
   }
 
-  List<Widget> _changeRows(MarketChange change, MarketInstrument instrument) {
+  List<Widget> _changeRows(
+      BuildContext context, MarketChange change, MarketInstrument inst) {
     String fmtRate(double v) {
-      if (instrument == MarketInstrument.gold24k ||
-          instrument == MarketInstrument.gold21k ||
-          instrument == MarketInstrument.gold18k) {
+      if (inst == MarketInstrument.gold24k ||
+          inst == MarketInstrument.gold21k ||
+          inst == MarketInstrument.gold18k) {
         return '${v.toStringAsFixed(6)} EGP/oz';
       }
       return '${v.toStringAsFixed(6)} EGP';
     }
 
     return [
-      _row('From', '${_formatDate(change.startDate)} • ${fmtRate(change.startRate)}'),
-      _row('To', '${_formatDate(change.endDate)} • ${fmtRate(change.endRate)}'),
-      _row('Change', '${change.changePct.toStringAsFixed(2)}%'),
+      _row(context, 'From',
+          '${_formatDate(change.startDate)} • ${fmtRate(change.startRate)}'),
+      _row(context, 'To',
+          '${_formatDate(change.endDate)} • ${fmtRate(change.endRate)}'),
+      _row(context, 'Change', '${change.changePct.toStringAsFixed(2)}%'),
     ];
   }
 
-  Widget _row(String k, String v) {
+  Widget _row(BuildContext context, String k, String v) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -206,13 +236,21 @@ class MarketDetailsDialog extends StatelessWidget {
           Expanded(
             child: Text(
               k,
-              style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: isDark
+                    ? AppColors.darkTextSecondary
+                    : Colors.grey.shade700,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(width: 10),
           Text(
             v,
-            style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: Theme.of(context).textTheme.bodyLarge?.color,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),

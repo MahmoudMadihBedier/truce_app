@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/shimmer_loader.dart';
 import '../../domain/entities/product.dart';
 import '../cubit/search_cubit.dart';
@@ -24,19 +25,30 @@ class _SearchPageState extends State<SearchPage> {
 
   bool _expanded = false;
 
+  // Full store names matching the API's store_name field.
   static const _stores = <String>[
-    'Jumia',
-    'Amazon',
-    'Carrefour',
-    'Noon',
+    'Jumia Egypt',
+    'Amazon Egypt',
+    'Carrefour Egypt',
+    'Noon Egypt',
   ];
 
-  static const _categories = <String>[
-    'All',
-    'Phones',
-    'Laptops',
+  // API-compatible category values.
+  static const _categoryApiValues = <String?>[
+    null,
+    'Electronics',
     'Fashion',
     'Home',
+    'Sports',
+  ];
+
+  // Translation keys for category display labels.
+  static const _categoryKeys = <String>[
+    'cat_all',
+    'cat_electronics',
+    'cat_fashion',
+    'cat_home',
+    'cat_sports',
   ];
 
   @override
@@ -51,17 +63,14 @@ class _SearchPageState extends State<SearchPage> {
       setState(() => _expanded = _focusNode.hasFocus);
     });
 
-    // Load initial page.
     context.read<SearchCubit>().searchFirstPage();
 
     _autoSlideTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!mounted) return;
-      final state = context.read<SearchCubit>().state;
-      final pageCount = state.loadedPagesCount;
-      if (pageCount < 2) return;
-      if (!_pageController.hasClients) return;
-
-      final next = (state.currentPageIndex + 1) % pageCount;
+      final cubitState = context.read<SearchCubit>().state;
+      final pageCount = cubitState.loadedPagesCount;
+      if (pageCount < 2 || !_pageController.hasClients) return;
+      final next = (cubitState.currentPageIndex + 1) % pageCount;
       context.read<SearchCubit>().setCurrentPageIndex(next);
       _pageController.animateToPage(
         next,
@@ -82,11 +91,10 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bg = Theme.of(context).scaffoldBackgroundColor;
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Search'),
+        title: Text(context.tr('search', fallback: 'Search')),
       ),
       body: SafeArea(
         child: Column(
@@ -108,16 +116,22 @@ class _SearchPageState extends State<SearchPage> {
                 listener: (context, state) {
                   final msg = state.errorMessage;
                   if (msg != null && msg.isNotEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text(msg)));
                   }
                 },
                 builder: (context, state) {
-                  if (state.isLoadingFirstPage) {
-                    return _loadingDash();
-                  }
+                  if (state.isLoadingFirstPage) return _loadingShimmer();
 
                   if (state.pages.isEmpty) {
-                    return const Center(child: Text('No results'));
+                    return Center(
+                      child: Text(
+                        context.tr('no_results_found', fallback: 'No results found'),
+                        style: TextStyle(
+                          color: Theme.of(context).textTheme.bodyMedium?.color,
+                        ),
+                      ),
+                    );
                   }
 
                   return Column(
@@ -132,10 +146,8 @@ class _SearchPageState extends State<SearchPage> {
                               context.read<SearchCubit>().loadNextPage();
                             }
                           },
-                          itemBuilder: (context, index) {
-                            final items = state.pages[index];
-                            return _productsGrid(items);
-                          },
+                          itemBuilder: (context, index) =>
+                              _productsGrid(state.pages[index]),
                         ),
                       ),
                       Padding(
@@ -150,11 +162,14 @@ class _SearchPageState extends State<SearchPage> {
                                   dotHeight: 7,
                                   dotWidth: 7,
                                   spacing: 6,
-                                  activeDotColor: Theme.of(context).colorScheme.primary,
+                                  activeDotColor:
+                                      Theme.of(context).colorScheme.primary,
                                   dotColor: Colors.grey.shade400,
                                 ),
                                 onDotClicked: (i) {
-                                  context.read<SearchCubit>().setCurrentPageIndex(i);
+                                  context
+                                      .read<SearchCubit>()
+                                      .setCurrentPageIndex(i);
                                   _pageController.animateToPage(
                                     i,
                                     duration: const Duration(milliseconds: 450),
@@ -168,7 +183,8 @@ class _SearchPageState extends State<SearchPage> {
                               const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2),
                               ),
                             ],
                           ],
@@ -198,7 +214,9 @@ class _SearchPageState extends State<SearchPage> {
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(
-                  alpha: Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.06,
+                  alpha: Theme.of(context).brightness == Brightness.dark
+                      ? 0.35
+                      : 0.06,
                 ),
                 blurRadius: 10,
                 offset: const Offset(0, 2),
@@ -215,10 +233,12 @@ class _SearchPageState extends State<SearchPage> {
                   controller: _controller,
                   focusNode: _focusNode,
                   textInputAction: TextInputAction.search,
+                  // Support Arabic/English keyboard input natively.
                   onChanged: (v) => context.read<SearchCubit>().setQuery(v),
-                  onSubmitted: (_) => context.read<SearchCubit>().searchFirstPage(),
-                  decoration: const InputDecoration(
-                    hintText: 'Search any product...',
+                  onSubmitted: (_) =>
+                      context.read<SearchCubit>().searchFirstPage(),
+                  decoration: InputDecoration(
+                    hintText: context.tr('search_hint'),
                     border: InputBorder.none,
                   ),
                 ),
@@ -239,42 +259,62 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _filtersRow(BuildContext context) {
+    // Resolve translated category labels aligned with _categoryApiValues.
+    final categoryItems = List.generate(_categoryKeys.length, (i) {
+      return DropdownMenuItem<String?>(
+        value: _categoryApiValues[i],
+        child: Text(context.tr(_categoryKeys[i])),
+      );
+    });
+
+    final storeItems = [
+      DropdownMenuItem<String?>(
+        value: null,
+        child: Text(context.tr('any', fallback: 'Any')),
+      ),
+      ..._stores.map((s) => DropdownMenuItem<String?>(value: s, child: Text(s))),
+    ];
+
     return Row(
       children: [
         Expanded(
-          child: _filterDropdown(
-            label: 'Store',
-            value: context.select((SearchCubit c) => c.state.storeName),
-            items: _stores,
-            onChanged: (v) {
-              context.read<SearchCubit>().setStore(v);
-              context.read<SearchCubit>().searchFirstPage();
-            },
+          child: _filterContainer(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String?>(
+                isExpanded: true,
+                value: context.select((SearchCubit c) => c.state.storeName),
+                hint: Text(context.tr('store', fallback: 'Store')),
+                items: storeItems,
+                onChanged: (v) {
+                  context.read<SearchCubit>().setStore(v);
+                  context.read<SearchCubit>().searchFirstPage();
+                },
+              ),
+            ),
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _filterDropdown(
-            label: 'Category',
-            value: context.select((SearchCubit c) => c.state.category) ?? 'All',
-            items: _categories,
-            onChanged: (v) {
-              context.read<SearchCubit>().setCategory(v == 'All' ? null : v);
-              context.read<SearchCubit>().searchFirstPage();
-            },
+          child: _filterContainer(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String?>(
+                isExpanded: true,
+                value: context.select((SearchCubit c) => c.state.category),
+                hint: Text(context.tr('filter_category', fallback: 'Category')),
+                items: categoryItems,
+                onChanged: (v) {
+                  context.read<SearchCubit>().setCategory(v);
+                  context.read<SearchCubit>().searchFirstPage();
+                },
+              ),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _filterDropdown({
-    required String label,
-    required String? value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
-    final current = value;
+  Widget _filterContainer({required Widget child}) {
     return Container(
       height: 44,
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -282,26 +322,15 @@ class _SearchPageState extends State<SearchPage> {
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String?>(
-          isExpanded: true,
-          value: current,
-          hint: Text(label),
-          items: [
-            const DropdownMenuItem<String?>(value: null, child: Text('Any')),
-            ...items.map((e) => DropdownMenuItem<String?>(value: e, child: Text(e))),
-          ],
-          onChanged: onChanged,
-        ),
-      ),
+      child: child,
     );
   }
 
-  Widget _loadingDash() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+  Widget _loadingShimmer() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16),
       child: Column(
-        children: const [
+        children: [
           SizedBox(height: 12),
           ShimmerLoader(width: double.infinity, height: 18),
           SizedBox(height: 10),
@@ -327,13 +356,11 @@ class _SearchPageState extends State<SearchPage> {
         final product = products[index];
         return ProductCard(
           product: product,
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => ProductDetailsPage(product: product),
-              ),
-            );
-          },
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProductDetailsPage(product: product),
+            ),
+          ),
         );
       },
     );
