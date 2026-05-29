@@ -12,4 +12,14 @@ class AppColors {
   static const Color background = Color(0xFFF5F5F5);
   static const Color textMain = Color(0xFF1A1A1A);
   static const Color textSecondary = Color(0xFF757575);
+
+  // Dark mode
+  static const Color darkSurface = Color(0xFF1E1E1E);
+  static const Color darkScaffold = Color(0xFF121212);
+  static const Color darkCard = Color(0xFF252525);
+  static const Color darkBorder = Color(0xFF333333);
+  static const Color darkTextPrimary = Color(0xFFE8E8E8);
+  static const Color darkTextSecondary = Color(0xFFAAAAAA);
+  static const Color darkInputFill = Color(0xFF2C2C2C);
+  static const Color darkPaleGreen = Color(0xFF1A3D28);
 }

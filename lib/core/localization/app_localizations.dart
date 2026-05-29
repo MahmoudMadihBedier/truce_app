@@ -2,6 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+extension LocalizationsX on BuildContext {
+  /// Translates [key] using AppLocalizations; falls back to [fallback] or [key] itself.
+  String tr(String key, {String? fallback}) =>
+      AppLocalizations.of(this)?.translate(key) ?? fallback ?? key;
+}
+
 class AppLocalizations {
   final Locale locale;
 

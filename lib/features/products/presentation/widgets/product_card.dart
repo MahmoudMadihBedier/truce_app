@@ -10,13 +10,15 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -72,17 +74,22 @@ class ProductCard extends StatelessWidget {
                         Text(
                           product.storeName,
                           style: TextStyle(
-                              color: Theme.of(context).primaryColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold),
+                            color: scheme.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           product.name,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold, height: 1.1),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            height: 1.1,
+                            color: scheme.onSurface,
+                          ),
                         ),
                       ],
                     ),
@@ -91,15 +98,18 @@ class ProductCard extends StatelessWidget {
                       children: [
                         Text(
                           '${product.currentPrice.toStringAsFixed(0)} EGP',
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w900, color: Colors.black),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: scheme.onSurface,
+                          ),
                         ),
                         if (product.previousPrice != null)
                           Text(
                             '${product.previousPrice!.toStringAsFixed(0)} EGP',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
-                              color: Colors.grey,
+                              color: scheme.onSurface.withValues(alpha: 0.55),
                               decoration: TextDecoration.lineThrough,
                             ),
                           ),
